@@ -153,8 +153,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     private static final int EVENT_SIM_GET_ATR_DONE = 48;
     private static final int CMD_OPEN_CHANNEL_WITH_P2 = 49;
     private static final int CMD_TOGGLE_LTE = 999; // not used yet
-
-
     private static final String PRIMARY_CARD_PROPERTY_NAME = "persist.radio.primarycard";
 
     /** The singleton instance. */
