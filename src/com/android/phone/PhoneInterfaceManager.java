@@ -16,8 +16,6 @@
 
 package com.android.phone;
 
-import static com.android.internal.telephony.PhoneConstants.SUBSCRIPTION_KEY;
-
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
 import android.content.ComponentName;
@@ -39,29 +37,28 @@ import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.UserHandle;
 import android.os.UserManager;
+import android.os.SystemProperties;
 import android.preference.PreferenceManager;
 import android.provider.Settings;
-import android.service.carrier.CarrierIdentifier;
 import android.telecom.PhoneAccount;
 import android.telecom.PhoneAccountHandle;
 import android.telecom.TelecomManager;
 import android.telephony.CarrierConfigManager;
 import android.telephony.CellInfo;
 import android.telephony.IccOpenLogicalChannelResponse;
-import android.telephony.ModemActivityInfo;
 import android.telephony.NeighboringCellInfo;
 import android.telephony.RadioAccessFamily;
 import android.telephony.ServiceState;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyHistogram;
 import android.telephony.TelephonyManager;
-import android.telephony.VisualVoicemailSmsFilterSettings;
+import android.telephony.ModemActivityInfo;
 import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.Log;
 import android.util.Pair;
 import android.util.Slog;
+
 import com.android.ims.ImsManager;
 import com.android.internal.telephony.CallManager;
 import com.android.internal.telephony.CellNetworkScanResult;
@@ -72,10 +69,9 @@ import com.android.internal.telephony.IccCard;
 import com.android.internal.telephony.MccTable;
 import com.android.internal.telephony.OperatorInfo;
 import com.android.internal.telephony.Phone;
-import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.PhoneFactory;
 import com.android.internal.telephony.ProxyController;
-import com.android.internal.telephony.RIL;
+import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.SubscriptionController;
 import com.android.internal.telephony.uicc.IccIoResult;
@@ -83,10 +79,10 @@ import com.android.internal.telephony.uicc.IccUtils;
 import com.android.internal.telephony.uicc.UiccCard;
 import com.android.internal.telephony.uicc.UiccController;
 import com.android.internal.util.HexDump;
-import com.android.phone.settings.VisualVoicemailSettingsUtil;
 import com.android.phone.settings.VoicemailNotificationSettingsUtil;
-import java.io.FileDescriptor;
-import java.io.PrintWriter;
+
+import static com.android.internal.telephony.PhoneConstants.SUBSCRIPTION_KEY;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -151,9 +147,9 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     private static final int CMD_SIM_GET_ATR = 47;
     private static final int EVENT_SIM_GET_ATR_DONE = 48;
     private static final int CMD_OPEN_CHANNEL_WITH_P2 = 49;
-    private static final int CMD_TOGGLE_LTE = 999; // not used yet
 
     private static final String PRIMARY_CARD_PROPERTY_NAME = "persist.radio.primarycard";
+    private static final int CMD_TOGGLE_LTE = 99; // not used yet
 
     /** The singleton instance. */
     private static PhoneInterfaceManager sInstance;
@@ -809,6 +805,7 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                     }
                     break;
 
+<<<<<<< HEAD
                 case CMD_SET_ALLOWED_CARRIERS:
                     request = (MainThreadRequest) msg.obj;
                     onCompleted = obtainMessage(EVENT_SET_ALLOWED_CARRIERS_DONE, request);
@@ -871,6 +868,8 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
                     }
                     break;
 
+=======
+>>>>>>> dd0ad7c... derp
                 case CMD_SIM_GET_ATR:
                     request = (MainThreadRequest) msg.obj;
                     uiccCard = getUiccCardUsingSubId(request.subId);
@@ -1113,61 +1112,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         intent.putExtra(SUBSCRIPTION_KEY, subId);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         mApp.startActivity(intent);
-    }
-
-     private int getPreferredNetworkMode() {
-        int preferredNetworkMode = RILConstants.PREFERRED_NETWORK_MODE;
-        if (mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
-            preferredNetworkMode = Phone.NT_MODE_GLOBAL;
-        }
-        int network = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
-              Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkMode);
-        return network;
-    }
-
-    public void toggleLTE(boolean on) {
-        int network = getPreferredNetworkMode();
-        boolean isCdmaDevice = mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE;
-
-        switch (network) {
-        // GSM Devices
-        case Phone.NT_MODE_WCDMA_PREF:
-        case Phone.NT_MODE_GSM_UMTS:
-            network = Phone.NT_MODE_LTE_GSM_WCDMA;
-            break;
-        case Phone.NT_MODE_LTE_GSM_WCDMA:
-            network = Phone.NT_MODE_WCDMA_PREF;
-            break;
-        // GSM and CDMA devices
-        case Phone.NT_MODE_GLOBAL:
-            // Wtf to do here?
-            network = Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
-            break;
-        case Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA:
-            // Determine the correct network type
-            if (isCdmaDevice) {
-                network = Phone.NT_MODE_CDMA;
-            } else {
-                network = Phone.NT_MODE_WCDMA_PREF;
-            }
-            break;
-        // CDMA Devices
-        case Phone.NT_MODE_CDMA:
-            if (SystemProperties.getInt("ro.telephony.default_network", 0) ==
-                        RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA) {
-                network = Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
-            } else {
-                network = Phone.NT_MODE_LTE_CDMA_AND_EVDO;
-            }
-            break;
-        case Phone.NT_MODE_LTE_CDMA_AND_EVDO:
-            network = Phone.NT_MODE_CDMA;
-            break;
-        }
-        mPhone.setPreferredNetworkType(network,
-                mMainThreadHandler.obtainMessage(CMD_TOGGLE_LTE));
-        android.provider.Settings.Global.putInt(mApp.getContentResolver(),
-                android.provider.Settings.Global.PREFERRED_NETWORK_MODE, network);
     }
 
     /**
@@ -1497,6 +1441,61 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         toggleRadioOnOffForSubscriber(getDefaultSubscription());
 
     }
+
+  private int getPreferredNetworkMode() {
+        int preferredNetworkMode = RILConstants.PREFERRED_NETWORK_MODE;
+        if (mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
+            preferredNetworkMode = Phone.NT_MODE_GLOBAL;
+        }
+        int network = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
+              Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkMode);
+        return network;
+    }
+public void toggleLTE(boolean on) {
+        int network = getPreferredNetworkMode();
+        boolean isCdmaDevice = mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE;
+
+        switch (network) {
+        // GSM Devices
+        case Phone.NT_MODE_WCDMA_PREF:
+        case Phone.NT_MODE_GSM_UMTS:
+            network = Phone.NT_MODE_LTE_GSM_WCDMA;
+            break;
+        case Phone.NT_MODE_LTE_GSM_WCDMA:
+            network = Phone.NT_MODE_WCDMA_PREF;
+            break;
+        // GSM and CDMA devices
+        case Phone.NT_MODE_GLOBAL:
+            // Wtf to do here?
+            network = Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
+            break;
+        case Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA:
+            // Determine the correct network type
+            if (isCdmaDevice) {
+                network = Phone.NT_MODE_CDMA;
+            } else {
+                network = Phone.NT_MODE_WCDMA_PREF;
+            }
+            break;
+        // CDMA Devices
+        case Phone.NT_MODE_CDMA:
+            if (SystemProperties.getInt("ro.telephony.default_network", 0) ==
+                        RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA) {
+                network = Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
+            } else {
+                network = Phone.NT_MODE_LTE_CDMA_AND_EVDO;
+            }
+            break;
+        case Phone.NT_MODE_LTE_CDMA_AND_EVDO:
+            network = Phone.NT_MODE_CDMA;
+            break;
+        }
+
+        mPhone.setPreferredNetworkType(network,
+                mMainThreadHandler.obtainMessage(CMD_TOGGLE_LTE));
+        android.provider.Settings.Global.putInt(mApp.getContentResolver(),
+                android.provider.Settings.Global.PREFERRED_NETWORK_MODE, network);
+	}
 
     public void toggleRadioOnOffForSubscriber(int subId) {
         enforceModifyPermission();
@@ -2048,58 +2047,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         return success;
     }
 
-    @Override
-    public void setVisualVoicemailEnabled(String callingPackage,
-            PhoneAccountHandle phoneAccountHandle, boolean enabled) {
-        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
-        if (!TextUtils.equals(callingPackage,
-                TelecomManager.from(mPhone.getContext()).getDefaultDialerPackage())) {
-            enforceModifyPermissionOrCarrierPrivilege(
-                    PhoneUtils.getSubIdForPhoneAccountHandle(phoneAccountHandle));
-        }
-        VisualVoicemailSettingsUtil.setEnabled(mPhone.getContext(), phoneAccountHandle, enabled);
-    }
-
-    @Override
-    public boolean isVisualVoicemailEnabled(String callingPackage,
-            PhoneAccountHandle phoneAccountHandle) {
-        if (!canReadPhoneState(callingPackage, "isVisualVoicemailEnabled")) {
-            return false;
-        }
-        return VisualVoicemailSettingsUtil.isEnabled(mPhone.getContext(), phoneAccountHandle);
-    }
-
-    @Override
-    public void enableVisualVoicemailSmsFilter(String callingPackage, int subId,
-            VisualVoicemailSmsFilterSettings settings) {
-        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
-        VisualVoicemailSmsFilterConfig
-                .enableVisualVoicemailSmsFilter(mPhone.getContext(), callingPackage, subId,
-                        settings);
-    }
-
-    @Override
-    public void disableVisualVoicemailSmsFilter(String callingPackage, int subId) {
-        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
-        VisualVoicemailSmsFilterConfig
-                .disableVisualVoicemailSmsFilter(mPhone.getContext(), callingPackage, subId);
-    }
-
-    @Override
-    public VisualVoicemailSmsFilterSettings getVisualVoicemailSmsFilterSettings(
-            String callingPackage, int subId) {
-        mAppOps.checkPackage(Binder.getCallingUid(), callingPackage);
-        return VisualVoicemailSmsFilterConfig
-                .getVisualVoicemailSmsFilterSettings(mPhone.getContext(), callingPackage, subId);
-    }
-
-    @Override
-    public VisualVoicemailSmsFilterSettings getSystemVisualVoicemailSmsFilterSettings(
-            String packageName, int subId) {
-        enforceReadPrivilegedPermission();
-        return VisualVoicemailSmsFilterConfig
-                .getVisualVoicemailSmsFilterSettings(mPhone.getContext(), packageName, subId);
-    }
     /**
      * Returns the unread count of voicemails
      */
@@ -3043,7 +2990,13 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     @Override
     public boolean isTtyModeSupported() {
         TelecomManager telecomManager = TelecomManager.from(mPhone.getContext());
+<<<<<<< HEAD
         return telecomManager.isTtySupported();
+=======
+        TelephonyManager telephonyManager =
+                (TelephonyManager) mPhone.getContext().getSystemService(Context.TELEPHONY_SERVICE);
+        return !telephonyManager.isMultiSimEnabled() && telecomManager.isTtySupported();
+>>>>>>> dd0ad7c... derp
     }
 
     @Override
@@ -3105,6 +3058,32 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
      */
     public boolean isWifiCallingAvailable() {
         return mPhone.isWifiCallingEnabled();
+    }
+
+    /*
+     * {@hide}
+     * Returns the Voice over Wifi Calling Status
+     */
+    public boolean isVoWifiCallingAvailableForSubscriber(int subId) {
+        final Phone phone = getPhone(subId);
+
+        if (phone != null) {
+            return phone.isWifiCallingEnabled();
+        }
+        return false;
+    }
+
+    /*
+     * {@hide}
+     * Returns the Video telephony WifiCalling Status
+     */
+    public boolean isVideoTelephonyWifiCallingAvailableForSubscriber(int subId) {
+        final Phone phone = getPhone(subId);
+
+        if (phone != null) {
+            return phone.isVideoWifiCallingEnabled();
+        }
+        return false;
     }
 
     /*
@@ -3364,6 +3343,7 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         return VoicemailNotificationSettingsUtil.isVibrationEnabled(phone);
     }
 
+<<<<<<< HEAD
     /**
      * Make sure either called from same process as self (phone) or IPC caller has read privilege.
      *
@@ -3582,6 +3562,8 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         }
     }
 
+=======
+>>>>>>> dd0ad7c... derp
     @Override
     public byte[] getAtr(int subId) {
         if (Binder.getCallingUid() != Process.SYSTEM_UID) {
