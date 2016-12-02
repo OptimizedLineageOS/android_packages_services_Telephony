@@ -152,7 +152,7 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     private static final int CMD_SIM_GET_ATR = 143;
     private static final int EVENT_SIM_GET_ATR_DONE = 144;
     private static final int CMD_OPEN_CHANNEL_WITH_P2 = 145;
-    private static final int CMD_TOGGLE_LTE = 999; // not used yet
+    private static final int CMD_TOGGLE_LTE = 99; // not used yet
 
     private static final String PRIMARY_CARD_PROPERTY_NAME = "persist.radio.primarycard";
 
@@ -1116,14 +1116,13 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         mApp.startActivity(intent);
     }
 
-    public int getPreferredNetworkMode() {
+     private int getPreferredNetworkMode() {
         int preferredNetworkMode = RILConstants.PREFERRED_NETWORK_MODE;
         if (mPhone.getLteOnCdmaMode() == PhoneConstants.LTE_ON_CDMA_TRUE) {
             preferredNetworkMode = Phone.NT_MODE_GLOBAL;
         }
-        final int phoneSubId = mPhone.getSubId();
         int network = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
-              Settings.Global.PREFERRED_NETWORK_MODE + phoneSubId, preferredNetworkMode);
+              Settings.Global.PREFERRED_NETWORK_MODE, preferredNetworkMode);
         return network;
     }
 
@@ -1135,15 +1134,10 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
         // GSM Devices
         case Phone.NT_MODE_WCDMA_PREF:
         case Phone.NT_MODE_GSM_UMTS:
-        case Phone.NT_MODE_GSM_ONLY:
-            //push old network to useless Settings.Global.PREFERRED_NETWORK_MODE
-            android.provider.Settings.Global.putInt(mApp.getContentResolver(),
-                    android.provider.Settings.Global.PREFERRED_NETWORK_MODE, network);
             network = Phone.NT_MODE_LTE_GSM_WCDMA;
             break;
         case Phone.NT_MODE_LTE_GSM_WCDMA:
-            network = Settings.Global.getInt(mPhone.getContext().getContentResolver(),
-              Settings.Global.PREFERRED_NETWORK_MODE, 1);
+            network = Phone.NT_MODE_WCDMA_PREF;
             break;
         // GSM and CDMA devices
         case Phone.NT_MODE_GLOBAL:
@@ -1160,19 +1154,21 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
             break;
         // CDMA Devices
         case Phone.NT_MODE_CDMA:
-            network = Phone.NT_MODE_LTE_CDMA_AND_EVDO;
+            if (SystemProperties.getInt("ro.telephony.default_network", 0) ==
+                        RILConstants.NETWORK_MODE_LTE_CDMA_EVDO_GSM_WCDMA) {
+                network = Phone.NT_MODE_LTE_CDMA_EVDO_GSM_WCDMA;
+            } else {
+                network = Phone.NT_MODE_LTE_CDMA_AND_EVDO;
+            }
             break;
         case Phone.NT_MODE_LTE_CDMA_AND_EVDO:
             network = Phone.NT_MODE_CDMA;
             break;
         }
-
         mPhone.setPreferredNetworkType(network,
                 mMainThreadHandler.obtainMessage(CMD_TOGGLE_LTE));
-        final int phoneSubId = mPhone.getSubId();
         android.provider.Settings.Global.putInt(mApp.getContentResolver(),
-                android.provider.Settings.Global.PREFERRED_NETWORK_MODE + phoneSubId, network);
-
+                android.provider.Settings.Global.PREFERRED_NETWORK_MODE, network);
     }
 
     /**
