@@ -155,9 +155,6 @@ public class PhoneInterfaceManager extends ITelephony.Stub {
     private static final int CMD_TOGGLE_LTE = 999; // not used yet
 
 
-    private static final int CMD_TOGGLE_LTE = 99; // not used yet
-
-
     private static final String PRIMARY_CARD_PROPERTY_NAME = "persist.radio.primarycard";
 
     /** The singleton instance. */
